@@ -1,0 +1,6 @@
+@FleetTelemetryPlatform_HostAddress = http://localhost:5186
+
+GET {{FleetTelemetryPlatform_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
