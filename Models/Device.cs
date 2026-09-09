@@ -1,4 +1,6 @@
-﻿namespace FleetTelemetryPlatform.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace FleetTelemetryPlatform.Models
 {
     public class Device
     {
@@ -7,6 +9,10 @@
         public string SerialNumber { get; set; } = string.Empty;
         public DeviceStatus Status { get; set; }
         public DateTime? LastSeenAt { get; set; }
+
+        //Optimistic Concurrency Control
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = null!;
 
         // Navigation properties
         public ICollection<TelemetryReading> TelemetryReadings { get; set; } = new List<TelemetryReading>();
