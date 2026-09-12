@@ -1,3 +1,4 @@
+using FleetTelemetryPlatform.Middleware;
 using Microsoft.EntityFrameworkCore;
 using FleetTelemetryPlatform.Data;
 using FleetTelemetryPlatform.Repositories;
@@ -20,6 +21,9 @@ builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 
 var app = builder.Build();
+
+// Register first to catch exceptions from all subsequent middleware and endpoints.
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // --- Automatic Migrations ---
 using (var scope = app.Services.CreateScope())
