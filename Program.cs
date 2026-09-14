@@ -1,8 +1,9 @@
-using FleetTelemetryPlatform.Middleware;
 using Microsoft.EntityFrameworkCore;
 using FleetTelemetryPlatform.Data;
 using FleetTelemetryPlatform.Repositories;
 using FleetTelemetryPlatform.Services;
+using FleetTelemetryPlatform.Messaging;   
+using FleetTelemetryPlatform.Middleware;
 using FleetTelemetryPlatform.Repositoriess;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Registered as Scoped to provide a dedicated DbContext per HTTP request.
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
+
+builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 
 var app = builder.Build();
 

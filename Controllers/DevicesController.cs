@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using FleetTelemetryPlatform.DTOs;
+using FleetTelemetryPlatform.DTOs; 
 using FleetTelemetryPlatform.Services;
 
 namespace FleetTelemetryPlatform.Controllers
