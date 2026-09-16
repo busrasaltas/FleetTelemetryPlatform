@@ -17,7 +17,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourStrong@Passw0rd5
+      - SA_PASSWORD=YourStrong@Passw0rd
     ports:
       - "1434:1433"
 
