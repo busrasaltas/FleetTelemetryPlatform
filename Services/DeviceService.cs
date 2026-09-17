@@ -56,8 +56,11 @@ namespace FleetTelemetryPlatform.Services
                 ?? throw new DeviceNotFoundException(id);
 
             device.Name = dto.Name;
-            device.Status = Enum.Parse<DeviceStatus>(dto.Status);
 
+            if (!Enum.TryParse<DeviceStatus>(dto.Status, out var status))
+                throw new ArgumentException($"Invalid device status: '{dto.Status}'. Valid values: Offline, Online, InFlight.");
+
+            device.Status = status;
             device.RowVersion = Convert.FromBase64String(dto.RowVersion);
 
             try
@@ -71,7 +74,6 @@ namespace FleetTelemetryPlatform.Services
 
             return MapToDto(device);
         }
-
         public async Task DeleteAsync(int id)
         {
             var device = await _repository.GetByIdAsync(id)

@@ -33,6 +33,7 @@ namespace FleetTelemetryPlatform.Middleware
             {
                 DeviceNotFoundException => (HttpStatusCode.NotFound, exception.Message),
                 DeviceConcurrencyException => (HttpStatusCode.Conflict, exception.Message),
+                ArgumentException => (HttpStatusCode.BadRequest, exception.Message),
                 _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
             };
 
