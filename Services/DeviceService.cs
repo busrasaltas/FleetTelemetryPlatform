@@ -2,6 +2,8 @@
 using FleetTelemetryPlatform.Models;
 using FleetTelemetryPlatform.Repositoriess;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 
 namespace FleetTelemetryPlatform.Services
 {
@@ -19,10 +21,16 @@ namespace FleetTelemetryPlatform.Services
     public class DeviceService : IDeviceService
     {
         private readonly IDeviceRepository _repository;
+        private readonly IDistributedCache _cache;
+        private static readonly DistributedCacheEntryOptions CacheOptions = new()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+        };
 
-        public DeviceService(IDeviceRepository repository)
+        public DeviceService(IDeviceRepository repository, IDistributedCache cache)
         {
             _repository = repository;
+            _cache = cache;
         }
 
         public async Task<List<DeviceDto>> GetAllAsync()
@@ -33,8 +41,24 @@ namespace FleetTelemetryPlatform.Services
 
         public async Task<DeviceDto?> GetByIdAsync(int id)
         {
+            var cacheKey = GetCacheKey(id);
+
+            var cached = await _cache.GetStringAsync(cacheKey);
+            if (cached is not null)
+            {
+                return JsonSerializer.Deserialize<DeviceDto>(cached);
+            }
+
             var device = await _repository.GetByIdAsync(id);
-            return device is null ? null : MapToDto(device);
+            if (device is null)
+            {
+                return null;
+            }
+
+            var dto = MapToDto(device);
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(dto), CacheOptions);
+
+            return dto;
         }
 
         public async Task<DeviceDto> CreateAsync(CreateDeviceDto dto)
@@ -72,15 +96,21 @@ namespace FleetTelemetryPlatform.Services
                 throw new DeviceConcurrencyException();
             }
 
+            await _cache.RemoveAsync(GetCacheKey(id));
+
             return MapToDto(device);
         }
+
         public async Task DeleteAsync(int id)
         {
             var device = await _repository.GetByIdAsync(id)
                 ?? throw new DeviceNotFoundException(id);
 
             await _repository.DeleteAsync(device);
+            await _cache.RemoveAsync(GetCacheKey(id));
         }
+
+        private static string GetCacheKey(int id) => $"device:{id}";
 
         private static DeviceDto MapToDto(Device device) => new()
         {

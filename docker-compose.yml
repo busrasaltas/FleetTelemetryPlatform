@@ -8,10 +8,12 @@ services:
     depends_on:
       - fleet-sql
       - fleet-rabbitmq
+      - fleet-redis
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=fleet-sql;Database=FleetTelemetryDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
       - RabbitMq__Host=fleet-rabbitmq
+      - Redis__ConnectionString=fleet-redis:6379
 
   fleet-sql:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -20,9 +22,19 @@ services:
       - SA_PASSWORD=YourStrong@Passw0rd
     ports:
       - "1434:1433"
+    volumes:
+    - fleet-sql-data:/var/opt/mssql
 
   fleet-rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"    # AMQP port for application connections 
       - "15672:15672"  # Management UI for monitoring queues
+
+  fleet-redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  volumes:
+  fleet-sql-data:

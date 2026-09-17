@@ -32,6 +32,11 @@ builder.Services.AddHostedService<TelemetryConsumerService>();
 
 builder.Services.AddScoped<ICommandService, CommandService>();
 
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration["Redis:ConnectionString"];
+});
+
 var app = builder.Build();
 
 // Register first to catch exceptions from all subsequent middleware and endpoints.
