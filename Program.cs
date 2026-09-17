@@ -30,6 +30,8 @@ builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 
 builder.Services.AddHostedService<TelemetryConsumerService>();
 
+builder.Services.AddScoped<ICommandService, CommandService>();
+
 var app = builder.Build();
 
 // Register first to catch exceptions from all subsequent middleware and endpoints.
