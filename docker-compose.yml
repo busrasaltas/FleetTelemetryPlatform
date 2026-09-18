@@ -23,18 +23,18 @@ services:
     ports:
       - "1434:1433"
     volumes:
-    - fleet-sql-data:/var/opt/mssql
+      - fleet-sql-data:/var/opt/mssql
 
   fleet-rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"    # AMQP port for application connections 
-      - "15672:15672"  # Management UI for monitoring queues
-
+      - "5672:5672"
+      - "15672:15672"
+      
   fleet-redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
 
-  volumes:
+volumes:
   fleet-sql-data:

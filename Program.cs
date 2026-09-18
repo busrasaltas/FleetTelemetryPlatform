@@ -1,10 +1,13 @@
 using FleetTelemetryPlatform.Data;
+using FleetTelemetryPlatform.Jobs;
 using FleetTelemetryPlatform.Messaging;
 using FleetTelemetryPlatform.Middleware;
 using FleetTelemetryPlatform.Repositories;
 using FleetTelemetryPlatform.Repositoriess;
 using FleetTelemetryPlatform.Services;
 using FleetTelemetryPlatform.Workers;
+using Hangfire;
+using Hangfire.Dashboard;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,9 +40,19 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration["Redis:ConnectionString"];
 });
 
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddHangfireServer();
+builder.Services.AddScoped<OfflineDeviceDetectionJob>();
+
+
 var app = builder.Build();
 
-// Register first to catch exceptions from all subsequent middleware and endpoints.
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // --- Automatic Migrations ---
@@ -61,7 +74,7 @@ using (var scope = app.Services.CreateScope())
             Thread.Sleep(5000);
         }
     }
-} 
+}
 
 // --- HTTP Request Pipeline ---
 if (app.Environment.IsDevelopment())
@@ -69,10 +82,29 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        // Docker port forwarding makes this request non-local to the container.
+        // This bypass exists only in the Development environment.
+        Authorization = new[] { new DevelopmentDashboardAuthorizationFilter() }
+    });
 }
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
+RecurringJob.AddOrUpdate<OfflineDeviceDetectionJob>(
+    "offline-device-detection",
+    job => job.ExecuteAsync(),
+    "*/1 * * * *");
+
 app.Run();
+
+sealed class DevelopmentDashboardAuthorizationFilter : IDashboardAuthorizationFilter
+{
+    public bool Authorize(DashboardContext context) =>
+        context.GetHttpContext().RequestServices
+            .GetRequiredService<IHostEnvironment>()
+            .IsDevelopment();
+}
