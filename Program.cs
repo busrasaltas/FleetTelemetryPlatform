@@ -49,6 +49,16 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 builder.Services.AddScoped<OfflineDeviceDetectionJob>();
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>(name: "sql-server")
+    .AddRedis(builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379", name: "redis")
+    .AddRabbitMQ(
+    factory: _ => new RabbitMQ.Client.ConnectionFactory
+    {
+        HostName = builder.Configuration["RabbitMq:Host"] ?? "localhost"
+    }.CreateConnectionAsync(),
+    name: "rabbitmq");
+
 
 var app = builder.Build();
 
@@ -93,6 +103,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 RecurringJob.AddOrUpdate<OfflineDeviceDetectionJob>(
     "offline-device-detection",
