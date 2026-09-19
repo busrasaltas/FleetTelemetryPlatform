@@ -6,6 +6,8 @@ using FleetTelemetryPlatform.Data;
 using FleetTelemetryPlatform.Messaging.Events;
 using FleetTelemetryPlatform.Models;
 using Microsoft.EntityFrameworkCore;
+using FleetTelemetryPlatform.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FleetTelemetryPlatform.Workers
 { 
@@ -15,6 +17,7 @@ namespace FleetTelemetryPlatform.Workers
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly string _host;
         private readonly ILogger<TelemetryConsumerService> _logger;
+        private readonly IHubContext<DeviceStatusHub> _hubContext;
 
         private IConnection? _connection;
         private IChannel? _channel;
@@ -22,11 +25,13 @@ namespace FleetTelemetryPlatform.Workers
         public TelemetryConsumerService(
             IServiceScopeFactory scopeFactory,
             IConfiguration configuration,
-            ILogger<TelemetryConsumerService> logger)
+            ILogger<TelemetryConsumerService> logger,
+            IHubContext<DeviceStatusHub> hubContext)
         {
             _scopeFactory = scopeFactory;
             _host = configuration["RabbitMq:Host"] ?? "localhost";
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -73,9 +78,23 @@ namespace FleetTelemetryPlatform.Workers
 
                     await db.Devices
                         .Where(d => d.Id == telemetryEvent.DeviceId)
-                        .ExecuteUpdateAsync(setters => setters.SetProperty(d => d.LastSeenAt, telemetryEvent.Timestamp));
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(d => d.LastSeenAt, telemetryEvent.Timestamp)
+                            .SetProperty(d => d.Status, DeviceStatus.Online));
 
                     await db.SaveChangesAsync();
+
+                    // Broadcast the update to all connected dashboard clients.
+                    await _hubContext.Clients.All.SendAsync("DeviceStatusChanged", new DeviceStatusUpdate
+                    {
+                        DeviceId = telemetryEvent.DeviceId,
+                        Status = "Online",
+                        LastSeenAt = telemetryEvent.Timestamp
+                    });
+
+                    _logger.LogInformation(
+                        "Published an online status update for device {DeviceId} to SignalR clients",
+                        telemetryEvent.DeviceId);
                 }
 
                 await _channel!.BasicAckAsync(eventArgs.DeliveryTag, multiple: false);

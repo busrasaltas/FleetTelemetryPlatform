@@ -11,6 +11,7 @@ services:
       - fleet-redis
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=fleet-sql;Database=FleetTelemetryDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True
       - RabbitMq__Host=fleet-rabbitmq
       - Redis__ConnectionString=fleet-redis:6379

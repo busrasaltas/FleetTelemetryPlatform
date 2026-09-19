@@ -8,6 +8,7 @@ using FleetTelemetryPlatform.Services;
 using FleetTelemetryPlatform.Workers;
 using Hangfire;
 using Hangfire.Dashboard;
+using FleetTelemetryPlatform.Hubs;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -59,6 +60,24 @@ builder.Services.AddHealthChecks()
     }.CreateConnectionAsync(),
     name: "rabbitmq");
 
+builder.Services.AddSignalR();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DashboardClient", policy =>
+    {
+        // SignalR negotiate requests use credentials by default. Browsers reject
+        // AllowAnyOrigin together with credentials, so only local UI origins are
+        // trusted during development.
+        policy.SetIsOriginAllowed(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+                (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                 uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)))
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
@@ -94,16 +113,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
-        // Docker port forwarding makes this request non-local to the container.
-        // This bypass exists only in the Development environment.
+
         Authorization = new[] { new DevelopmentDashboardAuthorizationFilter() }
     });
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors("DashboardClient");
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapHub<DeviceStatusHub>("/hubs/device-status").RequireCors("DashboardClient");
 
 RecurringJob.AddOrUpdate<OfflineDeviceDetectionJob>(
     "offline-device-detection",
