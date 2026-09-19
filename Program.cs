@@ -66,9 +66,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("DashboardClient", policy =>
     {
-        // SignalR negotiate requests use credentials by default. Browsers reject
-        // AllowAnyOrigin together with credentials, so only local UI origins are
-        // trusted during development.
+
         policy.SetIsOriginAllowed(origin =>
                 Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
                 (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
